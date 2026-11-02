@@ -1,0 +1,46 @@
+{
+  "project_name": "Dog_Conjunctiva_Analysis",
+  "description": "犬の結膜・角膜領域抽出と充血解析のための設定ファイル",
+  "paths": {
+    "data_dir": "./inputs",
+    "output_dir": "./predictions",
+    "model_save_dir": "./03_retrained_ckpt"
+  },
+  "dataset": {
+    "csv_filename": "./inputs/dataset.csv",
+    "image_size": 512,
+    "input_channels": 3,
+    "num_classes": 3,
+    "class_names": {
+      "0": "background",
+      "1": "conjunctiva",
+      "2": "cornea"
+    },
+    "normalization": true
+  },
+  "model": {
+    "name": "albb",
+    "architecture": "U-Net (ResNet34 backbone)",
+    "pretrained": true
+  },
+  "training": {
+    "batch_size": 4,
+    "max_epochs": 500,
+    "early_stopping_patience": 20,
+    "seed": 0,
+    "deterministic": false,
+    "gpu_devices": 1
+  },
+  "optimizer": {
+    "type": "Adam",
+    "lr": 0.0001,
+    "weight_decay": 0
+  },
+  "loss": {
+    "function": "CrossEntropyLoss"
+  },
+  "augmentation": {
+    "use_augmentation": true,
+    "note": "Albumentations: RandomResizedCrop, HorizontalFlip, RandomToneCurve, GridDistortion"
+  }
+}

@@ -1,0 +1,12 @@
+torch
+torchvision
+torchmetrics
+pytorch-lightning
+tensorboard
+albumentations
+numpy
+opencv-python-headless
+pandas
+pillow
+scikit-learn
+tqdm

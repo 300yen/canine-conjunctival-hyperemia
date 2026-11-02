@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv*/
+inputs/
+outputs/
+*.ckpt
+02_ROI_Segmentation/
+03_retrained_ckpt/
