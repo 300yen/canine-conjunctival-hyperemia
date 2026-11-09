@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Callable
 import numpy as np
 import pandas as pd
-from scipy.stats import kruskal, spearmanr
+from scipy.stats import spearmanr
 from sklearn.metrics import cohen_kappa_score
 
 RATERS = ["A_label", "B_label", "C_label"]
@@ -38,7 +38,6 @@ RNG_STREAM_IDS = {
     "segmentation_metrics": 3,
     "severity_windows": 4,
     "ridge_oof_performance": 5,
-    "disease_group_global_tests": 6,
     "figure4_agreement": 7,
 }
 
@@ -342,86 +341,6 @@ def disease_summary(valid: pd.DataFrame) -> pd.DataFrame:
             row[f"{label}_q1"] = q1(values)
             row[f"{label}_q3"] = q3(values)
         rows.append(row)
-    return pd.DataFrame(rows)
-
-
-def holm_adjust(p_values: list[float]) -> list[float]:
-    """Holm family-wise-error adjustment."""
-    values = np.asarray(p_values, dtype=float)
-    order = np.argsort(values)
-    adjusted = np.empty_like(values)
-    running = 0.0
-    m = len(values)
-    for rank, index in enumerate(order):
-        running = max(running, (m - rank) * values[index])
-        adjusted[index] = min(running, 1.0)
-    return adjusted.tolist()
-
-
-def disease_kruskal_stat(frame: pd.DataFrame, outcome: str) -> float:
-    samples = [
-        group[outcome].to_numpy(dtype=float)
-        for _, group in frame.groupby("disease_group", sort=True)
-        if len(group) > 0
-    ]
-    return float(kruskal(*samples).statistic)
-
-
-def disease_cluster_permutation_p(
-    frame: pd.DataFrame,
-    outcome: str,
-    rng: np.random.Generator,
-    n_perm: int,
-) -> tuple[float, float]:
-    """Global disease-group test preserving one- or two-eye dog blocks."""
-    work = frame.dropna(subset=[outcome]).sort_values(["ID", "R/L"]).reset_index(drop=True)
-    observed = disease_kruskal_stat(work, outcome)
-    blocks = cluster_index_blocks(work, "ID")
-    by_size: dict[int, list[np.ndarray]] = {}
-    for block in blocks:
-        by_size.setdefault(len(block), []).append(block)
-    values = work[outcome].to_numpy(dtype=float)
-    extreme = 0
-    for _ in range(n_perm):
-        permuted = np.empty_like(values)
-        for same_size_blocks in by_size.values():
-            source_order = rng.permutation(len(same_size_blocks))
-            for target, source_idx in zip(same_size_blocks, source_order):
-                permuted[target] = values[same_size_blocks[source_idx]]
-        permuted_frame = work.copy()
-        permuted_frame[outcome] = permuted
-        extreme += disease_kruskal_stat(permuted_frame, outcome) >= observed
-    return observed, (extreme + 1) / (n_perm + 1)
-
-
-def disease_global_tests(
-    valid: pd.DataFrame, rng: np.random.Generator, n_perm: int
-) -> pd.DataFrame:
-    work = valid.copy()
-    work["disease_group"] = work["Category_Mid"].map(DISEASE_MAP)
-    rows: list[dict[str, object]] = []
-    for label, outcome in (
-        ("Mean expert grade", "expert_mean"),
-        ("Redness Score", REDNESS),
-        ("Fractal dimension", FRACTAL),
-    ):
-        complete = work.dropna(subset=[outcome]).copy()
-        statistic, p_value = disease_cluster_permutation_p(
-            complete, outcome, rng, n_perm
-        )
-        rows.append(
-            {
-                "outcome": label,
-                "n_eyes": len(complete),
-                "n_dogs": complete["ID"].nunique(),
-                "n_disease_groups": complete["disease_group"].nunique(),
-                "kruskal_wallis_h": statistic,
-                "cluster_permutation_p": p_value,
-            }
-        )
-    adjusted = holm_adjust([float(row["cluster_permutation_p"]) for row in rows])
-    for row, value in zip(rows, adjusted):
-        row["holm_adjusted_p"] = value
     return pd.DataFrame(rows)
 
 

@@ -34,9 +34,12 @@ Annotated eyes use held-out fold predictions. Unannotated eyes use the five-mode
 
 ## Statistical analysis
 
+Disease-group comparisons require R and **clusrank 1.0-4** (reported by R as 1.0.4), in addition to the Python dependencies. Install the R package with `install.packages("clusrank")` in R. The comparison script checks the package version; the verified source release is [clusrank 1.0-4](https://cran.r-project.org/src/contrib/clusrank_1.0-4.tar.gz). Use UTF-8 CSV inputs. Run both analysis commands below to obtain all statistical outputs; the R comparison command does not depend on a global test.
+
 ```sh
 python table1.py demographics.csv features.csv Table1.csv
 python analyze.py features.csv segmentation/02_ROI_Segmentation/evaluation_paper/metrics_detailed_per_image.csv outputs
+Rscript compare_disease_groups.R features.csv outputs
 python confidence_bands.py plotting_table.csv outputs/confidence_bands.csv
 ```
 
@@ -44,11 +47,19 @@ Table 1 uses the columns ID (study dog key), month (age in months), sex, cast/sp
 
 features.csv has one row per enrolled eye. Required fields are ID (shared dog key), R/L, Category_Mid, A_label, B_label, C_label, AndMask_LabA_Density and fractal_dimension. The three expert ratings range from 0 to 3. Code 5 denotes unassessable. Preserve missing FD, eye order and dog grouping for seeded comparisons. Category_Mid values are listed in study_statistics.py. The segmentation metrics CSV contains test_ID, R/L, fold and the six per-eye metrics for each of Conj, Corn and Macro.
 
-The aggregate outputs cover expert agreement, associations, disease-group comparisons and segmentation performance. Statistical calculations are selected from the study analysis scripts. Table 3 uses 5,000 dog-level bootstrap draws. All 18 estimates and their confidence limits were checked against the archived verification table. The optional confidence-band command uses dog_code, expert_mean, redness_score, fractal_dimension, include_expert_rs and include_rs_fd. Supply boolean inclusion flags and retain dog ordering to reproduce the seeded pointwise limits.
+The Python command outputs expert agreement, primary associations, disease summaries and segmentation performance. The R command outputs `control_vs_disease_rgl.csv` and `disease_comparison_session.txt`. Disease comparisons use two-sided clustered Wilcoxon rank-sum tests (Rosner-Glynn-Lee method, `method="rgl", exact=FALSE, mu=0`), with dogs as clusters and a normal approximation. The package selects the cluster-level or subunit-level branch according to whether dogs contribute eyes to both groups. Temporary cluster numbers are ordered by eligible cluster size to preserve score/cluster alignment in the package's unbalanced subunit implementation. No eyes or values are changed by this ordering.
+
+Each of the three outcomes has a separate Holm family of 13 disease-versus-normal comparisons, including ISP. ISP is flagged `descriptive_only` because only one eye is available. Missing outcome values are excluded within each comparison; eyes with any expert rating of 5 are excluded from all three analyses. Outputs contain group eye/dog counts, medians and quartiles, median differences, absolute Z statistics, raw p values, Holm-adjusted p values and threshold flags. The absolute statistic is reported because the package's internal group recoding can reverse the sign of Z; the two-sided p value is unchanged. These are normal-approximation p values, not permutation p values. Small disease groups warrant cautious interpretation. See [Jiang et al. (2020)](https://doi.org/10.18637/jss.v096.i06) for the package and methods.
+
+Global disease tests and the former `posthoc.py` comparison command have been removed. When rerunning an older analysis, use a fresh output directory so obsolete `disease_group_global_tests.csv` and `control_vs_disease_posthoc.csv` files are not mistaken for current results. Spearman association p values still use dog-block permutation tests.
+
+Statistical calculations are selected from the study analysis scripts. Table 3 uses 5,000 dog-level bootstrap draws. All 18 estimates and their confidence limits were checked against the archived verification table. The optional confidence-band command uses dog_code, expert_mean, redness_score, fractal_dimension, include_expert_rs and include_rs_fd. Supply boolean inclusion flags and retain dog ordering to reproduce the seeded pointwise limits.
 
 ## Numerical verification
 
 On 2 November 2026, the release commands regenerated all 35 rows of Table 1, the expert agreement results used for Table 2, primary associations, global disease tests, disease summaries, segmentation summaries and 39 control-versus-disease comparisons. Table 1 matched the manuscript CSV cell for cell. The six statistical outputs matched the archived aggregates to their reported precision.
+
+On 10 November 2026, the revised R command was verified against the 9 November clustered-Wilcoxon analysis using the 300-eye study input. All 39 comparisons matched in eye/dog counts and Holm significance decisions. Maximum absolute differences were below 1e-12 for raw p values, adjusted p values and absolute Z statistics. Shuffling input rows and relabelling dog keys preserved p values. Validation used webR 0.6.0 / R 4.6.0 with the installed clusrank 1.0-4 package; a native Rscript installation was not separately tested. The earlier global-test verification above describes the historical release, not the revised analysis.
 
 ## Release status
 

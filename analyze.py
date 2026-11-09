@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 
-from posthoc import compare
 import study_statistics as study
 
 
@@ -19,12 +18,10 @@ def main():
     for name, function, frame in [
         ("expert_agreement", study.summarize_experts, valid),
         ("primary_associations", study.summarize_associations, valid),
-        ("disease_group_global_tests", study.disease_global_tests, valid),
         ("segmentation_metrics", study.segmentation_summary, metrics),
     ]:
         table = function(frame, study.analysis_rng(20260728, name), 5000)
         table.to_csv(args.output / (name + ".csv"), index=False)
-    compare(data).to_csv(args.output / "control_vs_disease_posthoc.csv", index=False)
     study.disease_summary(valid).to_csv(args.output / "disease_summary.csv", index=False)
 
 
