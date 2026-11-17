@@ -7,11 +7,11 @@ from torchvision import transforms
 import albumentations as A
 from albumentations.pytorch.transforms import ToTensorV2
 
-# 300眼のデータセットから、imageと結膜、角膜のラベルのndarrayのリストを返すもの
+# Load annotated images and conjunctiva/cornea label arrays.
 def load_dataset(mode='train', fold=1, base_path='inputs'):
     assert mode in['train', 'val'], 'split must be "train" or "val"'
     df = pd.read_csv(f'{base_path}/dataset.csv')
-    #　ラベルデータが選ばれているやつを選択
+    # Select annotated eyes.
     df = df[df['label']>0]
     #　fold番号ごとに、'train' または 'val' に応じてデータを分割する
     if mode == 'train':
@@ -21,8 +21,6 @@ def load_dataset(mode='train', fold=1, base_path='inputs'):
 
     #　それぞれの画像（nparray）が入ったリストを作成する
     images = []
-    #conj_masks = []
-    #cornea_masks = []
     masks = []
 
     for i, row in df.iterrows():
@@ -38,19 +36,16 @@ def load_dataset(mode='train', fold=1, base_path='inputs'):
 
         blue_mask = cv2.inRange(mask,(0, 0, 255,255),(0, 0, 255,255)) #結膜
         red_mask = cv2.inRange(mask,(255, 0, 0,255),(255, 0, 0,255)) #角膜
-        #green_mask = cv2.inRange(mask,(0, 255, 0,255),(0, 255, 0,255))    #将来的に使うかもしれない血管
         arr1 = np.where(blue_mask == 255)
         arr2 = np.where(red_mask == 255)
         combined_mask = np.zeros_like(blue_mask)
         combined_mask[arr1] = 1
         combined_mask[arr2] = 2
 
-        #conj_masks.append(blue_mask)
-        #cornea_masks.append(red_mask)
         masks.append(combined_mask)
 
 
-    return images, masks#, conj_masks, cornea_masks
+    return images, masks
 
 
 #　データ拡張（テンソル形式に変換）
@@ -102,7 +97,7 @@ class ConjDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.images)
 
-#　データセットのクラスのインスタンス化するやつ
+# Construct the training and validation datasets.
 def train_val_dataset( fold=1, augmentation=True, normalization=True, size=512, base_path='inputs'):
     # データセットの取得
     train = ConjDataset(mode='train', fold=fold, augmentation=augmentation, normalization=normalization, size=size, base_path=base_path)

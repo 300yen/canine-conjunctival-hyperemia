@@ -8,13 +8,13 @@ from dataset import train_val_dataloader
 from seg import create_model
 
 
-def training_model(model_name, fold_num, train_loader, val_loader, save_dir, img_size=512): # ← ここ変更
+def training_model(model_name, fold_num, train_loader, val_loader, save_dir, img_size=512):
 
     date = datetime.date.today().strftime("%Y%m%d")
     pl.seed_everything(0)
     net, model_name = create_model(model_name)
 
-    # ロガーの名前にも fold_num を反映
+    # Keep logs separate for each fold.
     logger = TensorBoardLogger(
         save_dir=save_dir,
         name=f"tb_logs_{model_name}_fold{fold_num}"
@@ -23,7 +23,7 @@ def training_model(model_name, fold_num, train_loader, val_loader, save_dir, img
     checkpoint = ModelCheckpoint(
         monitor = 'val_loss',
         dirpath = save_dir,
-        # 引数で受け取った fold_num を使うから間違いが起きない！
+        # Include the fold number in checkpoint filenames.
         filename = f'{model_name}_{img_size}_fold{fold_num}_{date}' + '_{epoch:02d}_{val_loss:.4f}',
         save_top_k = 1,
         mode = 'min',
@@ -36,16 +36,14 @@ def training_model(model_name, fold_num, train_loader, val_loader, save_dir, img
         mode='min'
     )
 
-    # --- 2. Trainer に logger を渡す ---
-    # logger=True を logger=logger に書き換えるだけ！
     trainer = pl.Trainer(
         max_epochs = 500,
         devices=1,
         accelerator="gpu",
         deterministic=False,
         callbacks=[checkpoint, early_stopping],
-        logger=logger,  # ← ここを True から作成した logger に変更
-        log_every_n_steps=10  # ← これを追加！(40より小さい数ならOK)
+        logger=logger,
+        log_every_n_steps=10
     )
 
     trainer.fit(net, train_loader, val_loader)

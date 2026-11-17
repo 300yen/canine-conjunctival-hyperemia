@@ -3,8 +3,7 @@ import torch
 import torch.nn as nn
 from torchmetrics import JaccardIndex, Accuracy
 
-# さっき作った networks.py から、モデル生成関数を読み込む
-# ※ 同じフォルダ(src)にあることを想定しているわ
+# Support both direct imports and imports through the src package.
 try:
     from networks import create_model
 except ImportError:
@@ -16,12 +15,12 @@ class ConjunctivaSegmentationModule(pl.LightningModule):
         config: jsonから読み込んだ辞書データ
         """
         super().__init__()
-        # ハイパーパラメータを自動保存（checkpointsに残るから便利よ）
+        # Store model configuration in checkpoints.
         self.save_hyperparameters()
         self.config = config
 
         # ---------------------------------------------------
-        # 1. Configに基づいてモデル（脳みそ）を作成
+        # 1. Initialize the model from the configuration.
         # ---------------------------------------------------
         model_name = config['model']['name']      # 例: 'albb' (ANetB相当)
         num_classes = config['dataset']['num_classes']
@@ -64,7 +63,7 @@ class ConjunctivaSegmentationModule(pl.LightningModule):
         acc = self.metric_acc(y, t)
         jac = self.metric_jac(y, t)
 
-        # Validationは epochごとの集計だけでOK
+        # Aggregate validation metrics by epoch.
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True)
         self.log('val_acc', acc, on_step=False, on_epoch=True)
         self.log('val_jac', jac, on_step=False, on_epoch=True, prog_bar=True)
@@ -76,7 +75,7 @@ class ConjunctivaSegmentationModule(pl.LightningModule):
         lr = self.config['optimizer']['lr']
         optimizer_type = self.config['optimizer']['type']
 
-        # 今はAdam固定にしておくけど、将来拡張できるようにしておくわ
+        # Use Adam; unrecognized optimizer names also fall back to Adam.
         if optimizer_type == 'Adam':
             optimizer = torch.optim.Adam(self.parameters(), lr=lr)
         else:

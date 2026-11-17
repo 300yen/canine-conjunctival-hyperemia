@@ -35,13 +35,13 @@ def calculate_binary_metrics(pred_mask, gt_mask, target_class, prefix=""):
     recall = tp / (tp + fn + eps)        # Sensitivity
     f1 = 2 * (precision * recall) / (precision + recall + eps)
 
-    # GTがそのクラスを含まない場合の特例処理 (IoUなどは1.0とするのが一般的だが、文脈による)
+    # Handle a class absent from the ground-truth mask.
     if np.sum(g) == 0:
-        # 予測も0なら満点、予測があれば0点
+        # Assign IoU and F1 of 1 for two empty masks, otherwise 0.
         score = 1.0 if np.sum(p) == 0 else 0.0
         iou = score
         f1 = score
-        recall = 1.0 # 対象がないので見逃しもない
+        recall = 1.0 # Recall is defined as 1 when ground truth is empty.
 
     return {
         f"{prefix}Accuracy": accuracy,
@@ -127,7 +127,6 @@ def main():
         record.update(metrics_corn)
         
         # (3) Macro Average (結膜と角膜の平均)
-        # 論文ではこの平均値を「モデルの性能」として載せることが多いよ
         for key in metrics_conj.keys():
             metric_name = key.replace("Conj_", "")
             val_conj = metrics_conj[f"Conj_{metric_name}"]

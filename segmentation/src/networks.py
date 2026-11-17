@@ -120,7 +120,7 @@ class AlbuNet(nn.Module):
         out = self.final(d5)
         return out
 
-# ★ あなたが使っていた ANetB に対応するモデル構造
+# Bilinear-upsampled AlbuNet, corresponding to the ANetB checkpoints.
 class AlbuNetB(AlbuNet):
     def __init__(self, num_classes):
         super().__init__(num_classes, upsample='bilinear')
@@ -131,7 +131,6 @@ class AlbuNetN(AlbuNet):
 
 # ==========================================
 # サブモデル定義（UNet11, UNet16 / VGG系）
-# ※ 将来比較実験するかもしれないから残しておきます
 # ==========================================
 
 class UNet11(nn.Module):
@@ -220,10 +219,10 @@ class UNet16B(UNet16):
 # モデル選択用辞書 & ファクトリー関数
 # ==========================================
 
-# ここで Configファイル の "model": {"name": "albb"} と紐付けます
+# Map configuration model names to network classes.
 model_class_map = {
     'alb': AlbuNet,
-    'albb': AlbuNetB,   # ← これが ANetB に相当するモデル
+    'albb': AlbuNetB,   # ANetB checkpoint architecture
     'albn': AlbuNetN,
     'u11': UNet11,
     'u11b': UNet11B,

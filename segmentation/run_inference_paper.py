@@ -75,7 +75,7 @@ def calculate_binary_metrics(pred_binary, gt_binary, prefix=""):
     # GTが完全に真っ黒(0)の場合の例外処理
     if np.sum(g) == 0:
         iou = 1.0 if np.sum(p) == 0 else 0.0
-        recall = 1.0 # 対象がないので再現率は1とする考え方もあるが、文脈による。ここでは計算通り。
+        recall = 1.0 # Recall is defined as 1 when ground truth is empty.
         f1 = 1.0 if np.sum(p) == 0 else 0.0
 
     return {

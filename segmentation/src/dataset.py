@@ -56,7 +56,7 @@ def load_dataset(mode='train', fold=1, data_dir='../01_raw_data', csv_filename='
         img_path = os.path.join(img_dir, fn)
         lbl_path = os.path.join(lbl_dir, fn)
         
-        # 画像がない場合はスキップ（あるいはエラーにする）
+        # Skip missing images with a warning.
         if not os.path.exists(img_path):
             print(f"Warning: Image not found {img_path}")
             continue
@@ -74,8 +74,6 @@ def load_dataset(mode='train', fold=1, data_dir='../01_raw_data', csv_filename='
         blue_mask = cv2.inRange(mask_src, (0, 0, 255, 255), (0, 0, 255, 255)) # 結膜
         red_mask = cv2.inRange(mask_src, (255, 0, 0, 255), (255, 0, 0, 255))  # 角膜
         
-        # 将来的に使うかもしれない血管 (green)
-        # green_mask = cv2.inRange(mask_src, (0, 255, 0, 255), (0, 255, 0, 255))
 
         # マルチクラスマスクの作成 (0:背景, 1:結膜, 2:角膜)
         combined_mask = np.zeros_like(blue_mask)
@@ -86,7 +84,7 @@ def load_dataset(mode='train', fold=1, data_dir='../01_raw_data', csv_filename='
         id_info = f"{str(row['test_ID']).zfill(4)}_{row['R/L']}"
         ids.append(id_info)
 
-    return images, masks, ids  # ★ 追加: idsも返す！
+    return images, masks, ids  # Retain image identifiers alongside the arrays.
 
 # ==========================================
 # Augmentation (データ拡張) 定義
@@ -129,7 +127,7 @@ class ConjDataset(torch.utils.data.Dataset):
                  normalization=True, data_dir='../01_raw_data', csv_filename='dataset.csv'):
         
         # load_datasetにパス情報を渡す
-        self.images, self.labels, self.ids = load_dataset(  # ★ 変更
+        self.images, self.labels, self.ids = load_dataset(
             mode=mode, 
             fold=fold, 
             data_dir=data_dir, 
@@ -142,14 +140,14 @@ class ConjDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         image = self.images[idx]
         label = self.labels[idx]
-        img_id = self.ids[idx] # ★ 追加
+        img_id = self.ids[idx]
 
         # Albumentationsによる変換
         auged = self.albu(image=image, mask=label)
         x = auged['image']
         t = auged['mask']
         
-        return x, t.to(torch.int64), img_id # ★ 追加: IDも返す
+        return x, t.to(torch.int64), img_id
 
     def __len__(self):
         return len(self.images)
