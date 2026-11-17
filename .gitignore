@@ -6,3 +6,7 @@ outputs/
 *.ckpt
 02_ROI_Segmentation/
 03_retrained_ckpt/
+data/
+reference_results/
+retrained_ckpt/
+*.zip

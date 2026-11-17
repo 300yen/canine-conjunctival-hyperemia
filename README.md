@@ -1,85 +1,55 @@
 # Canine conjunctival hyperemia
 
-Code for segmenting the conjunctiva and cornea in canine anterior segment photographs, measuring conjunctival Redness Score (RS) and vessel fractal dimension (FD), and reproducing the accompanying study analyses.
+Research code for quantifying canine ocular redness from anterior segment photographs. The workflow segments the conjunctiva and cornea, calculates Redness Score (RS) and vessel fractal dimension (FD), and evaluates their associations with expert grades.
 
-## Data and trained models
+## Data
 
-The [dataset on Zenodo](https://doi.org/10.5281/zenodo.23889738) contains images from 150 dogs (300 eyes), manual annotations for 200 eyes, predicted masks for all 300 eyes, five trained models, expert grades, measurements, and analysis results. Its README describes the files and variables.
+Images, annotations, trained models, measurements, and reference results are available in the [Zenodo dataset](https://doi.org/10.5281/zenodo.23889738).
 
-Images are provided as 640 × 480 research-source PNGs and 512 × 512 analysis inputs. The original camera JPEG files are not included. Resizing the source PNGs with OpenCV `INTER_LINEAR` reproduces the analysis inputs pixel for pixel.
+The dataset contains 300 eyes from 150 dogs. Manual annotations are available for 200 eyes, and predicted masks are provided for all 300 eyes. The 640 × 480 research-source PNGs and 512 × 512 analysis images are included; camera-original JPEG files are not included.
 
-## Measure RS and FD
+## Getting started
 
-Use a Python 3.12 environment and install the analysis dependencies. Run commands from the repository root unless indicated otherwise.
+Use Python 3.12 in a dedicated environment. From the repository root:
 
 ```sh
 python -m pip install -r requirements-analysis.txt
-python demo.py
 ```
 
-The demo runs on a synthetic image without downloading study data. To measure an image with an existing segmentation mask:
+Download `analysis_dataset_300.zip` from Zenodo into the repository root and extract it:
 
 ```sh
-python measure.py image.png mask.png
+python -m zipfile -e analysis_dataset_300.zip data
+python measure.py data/images/D001_L.png data/predicted_masks/D001_L.png
 ```
 
-Both inputs must be 512 × 512 pixels. The mask must be a single-channel label image: `0` for background, `1` for conjunctiva, and `2` for cornea. The command returns RS and FD as JSON; an undefined FD is returned as `null`.
+This returns RS and FD for one study image as JSON. An undefined FD is reported as `null`. The measurement command takes a 512 × 512 color image and a matching single-channel mask with labels `0` (background), `1` (conjunctiva), and `2` (cornea).
 
-For the study images, extract `analysis_dataset_300.zip` into `data/` and use matching files from `data/images/` and `data/predicted_masks/`.
+## Workflows
 
-## Segmentation
+The [reproduction guide](docs/reproduction.md) provides commands, input formats, and output locations for:
 
-Use this workflow to generate masks from the released models. The stored masks can be used directly for measurement without running inference again.
+- **Measurement and statistical analysis:** use the released images, masks, and CSV tables to reproduce RS, FD, expert agreement, associations, disease comparisons, and confidence intervals.
+- **Segmentation:** use the five trained models to generate masks and calculate segmentation performance.
+- **Training:** train the study architecture with the supplied dog-level folds and training settings.
 
-Download `analysis_dataset_300.zip`, `original_resolution_images_300.zip`, and `prepare_segmentation_inputs.py` from Zenodo into the repository root. Prepare a new input directory:
-
-```sh
-python prepare_segmentation_inputs.py analysis_dataset_300.zip original_resolution_images_300.zip segmentation/inputs
-```
-
-Extract `model_checkpoints_5fold.zip` into `segmentation/`, so that `03_retrained_ckpt/` contains one checkpoint per fold. In a separate environment with PyTorch and the segmentation dependencies installed, run:
-
-```sh
-cd segmentation
-python -m pip install -r requirements.txt
-python run_inference_paper.py
-python calc_metrics_from_saved.py
-```
-
-Paths are configured in `segmentation/configs/config.json`. Annotated eyes use their held-out fold model; the remaining eyes use the average probabilities from all five models. Label masks are written to `segmentation/02_ROI_Segmentation/predictions/masks_merged/`. The last command calculates per-eye and per-fold segmentation metrics, including the mean across conjunctiva and cornea, under `evaluation_paper/`.
-
-To train a model, run `python training/train.py 1` from `segmentation/`, replacing `1` with each fold number from 1 to 5. Training requires a GPU. Preserve the supplied dog-level fold assignments.
-
-## Reproduce the study analyses
-
-The scripts below use the CSV files in `analysis_dataset_300.zip`; model training and inference are not required. Extract the archive into `data/` and create an `outputs/` directory before running these commands from the repository root.
-
-| Script | Purpose |
+| Code | Role |
 |---|---|
-| `table1.py` | Cohort characteristics and diagnostic counts for Table 1 |
-| `analyze.py` | Expert agreement, associations with RS and FD, disease summaries, and segmentation performance |
-| `compare_disease_groups.R` | Disease-versus-control comparisons |
-| `confidence_bands.py` | Pointwise confidence limits for the descriptive regression lines |
+| `measure.py`, `features.py` | Image measurements and vessel processing |
+| `analyze.py`, `study_statistics.py` | Expert agreement, associations, segmentation summaries, and disease summaries |
+| `compare_disease_groups.R` | Clustered disease-versus-control comparisons |
+| `confidence_bands.py` | Pointwise confidence limits for descriptive regression lines |
+| `prepare_segmentation_inputs.py` | Prepare the released images and annotations for training and inference |
+| `segmentation/` | Model definitions, training, inference, and mask evaluation |
 
-```sh
-python table1.py data/demographics.csv data/features.csv outputs/Table1.csv
-python analyze.py data/features.csv data/segmentation_metrics.csv outputs
-Rscript compare_disease_groups.R data/features.csv outputs
-python confidence_bands.py data/plotting_table.csv outputs/confidence_bands.csv
-```
-
-The R script requires **clusrank 1.0-4** (reported by R as `1.0.4`). It uses two-sided Rosner–Glynn–Lee clustered Wilcoxon tests with dogs as clusters, a normal approximation, and Holm adjustment across 13 comparisons per outcome. The intrascleral-prosthesis group is retained in the adjustment family and marked `descriptive_only`.
-
-The dataset retains all 300 eyes. Expert-grade and RS analyses use 298 eyes from 150 dogs; FD analyses use 296 eyes from 149 dogs. Inclusion flags and exclusion reasons are supplied in `analysis_inclusion.csv`. Keep undefined FD values missing and preserve dog identifiers and row order for the seeded bootstrap and permutation analyses.
+The study uses AlbuNetB, a U-Net architecture with a ResNet34 encoder and bilinear upsampling. Other network definitions are available in the model modules; the study commands select AlbuNetB.
 
 ## Reproducibility
 
-Measurement and statistical outputs have been checked against the stored study results. The analysis environment used Windows x64, Python 3.12, and OpenCV 4.12.0.88 with Intel IPP enabled; numerical results may vary with the image-processing environment. Full GPU retraining has not been repeated for the distributed package, and the segmentation dependencies are not version-pinned.
-
-The [study code snapshot](https://github.com/300yen/canine-conjunctival-hyperemia/tree/1ac974a5184aed30449b8a8f677b752bd942c669) is retained for reproducibility. File checksums and validation details are included in the Zenodo dataset.
+Measurement and statistical outputs have been checked against the stored study results. Image measurements were verified with OpenCV 4.12.0.88 and Intel IPP enabled on Windows x64. The [guide](docs/reproduction.md#environment-and-reproducibility) describes environment requirements and the scope of verification. GPU retraining may produce different weights because training is not deterministic.
 
 ## Citation and licensing
 
-When using the study data or trained models, cite [Nakagiri et al., *Automated quantification of canine ocular redness: images, segmentation masks, measurements and trained models*, version 1.0.0](https://doi.org/10.5281/zenodo.23889738). When referring to the code, include the repository URL and the commit used.
+When using the data or trained models, cite [Nakagiri et al., *Automated quantification of canine ocular redness: images, segmentation masks, measurements and trained models*, version 1.0.0](https://doi.org/10.5281/zenodo.23889738). When referring to the code, include this repository URL and the commit used.
 
 The Zenodo data and trained models are distributed under CC BY 4.0. A software license has not been specified for this repository.
