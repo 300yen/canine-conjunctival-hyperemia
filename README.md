@@ -63,4 +63,9 @@ On 10 November 2026, the revised R command was verified against the 9 November c
 
 ## Release status
 
-This directory contains code only. Dataset and checkpoint accession numbers, the final software license and the public release DOI are pending. The original capture-to-input preprocessing and full GPU replay have not been verified.
+The dataset and five trained checkpoints are available at [Zenodo, version 1.0.0](https://doi.org/10.5281/zenodo.23889738). The dataset includes 300 original-resolution research PNGs (640 x 480), 300 analysis inputs, 200 manual masks, 300 prediction masks, de-identified eye-level and dog-level tables, explicit analysis-inclusion flags, the five checkpoints, and V18 aggregate results. See the dataset README and checksums for file definitions and reproduction commands.
+
+The computational code corresponding to manuscript V18 remains [commit 1ac974a5184aed30449b8a8f677b752bd942c669](https://github.com/300yen/canine-conjunctival-hyperemia/tree/1ac974a5184aed30449b8a8f677b752bd942c669). The publication update changes documentation only. The separately hosted software license remains unspecified; the Zenodo dataset license does not assign a new license to this repository.
+
+The 300 original-resolution PNGs resize with OpenCV INTER_LINEAR to the stored analysis images pixel for pixel. These are research-source PNGs, not the camera-original JPEG bitstreams described under image acquisition. The camera JPEG files were not located during release preparation. Full GPU training replay has not been performed. Prior CPU inference reproduced 299 of 300 masks exactly, with a one-pixel difference in the remaining mask and no change in RS or FD.
+
